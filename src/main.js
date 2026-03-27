@@ -235,24 +235,406 @@ function createEthiopianPattern() {
     return { texture, emissiveTexture, normalTexture };
 }
 
+
+// Cursor Tracking Camera System with Interactive Aroma Effects
+class CameraAutomation {
+    constructor(camera, controls) {
+        this.camera = camera;
+        this.controls = controls;
+        
+        // Disable auto-rotation for proper cursor control
+        this.controls.autoRotate = false;
+        
+        // Cursor tracking properties
+        this.mouseX = 0;
+        this.mouseY = 0;
+        this.targetMouseX = 0;
+        this.targetMouseY = 0;
+        this.cursorInfluence = 0.3; // Stronger cursor influence
+        this.isTracking = true;
+        
+        // Aroma effect properties
+        this.aromaIntensity = 0;
+        this.aromaParticles = [];
+        this.clickAromaBurst = []; // Click-triggered aroma bursts
+        this.cursorAromaSource = new THREE.Vector3(); // Cursor position in 3D space
+        this.initCursorTracking();
+        this.initAromaEffects();
+    }
+    
+    initCursorTracking() {
+        // Track mouse movement
+        window.addEventListener('mousemove', (event) => {
+            if (!this.isTracking) return;
+            
+            this.targetMouseX = (event.clientX / window.innerWidth) * 2 - 1;
+            this.targetMouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            // Update cursor 3D position for aroma source
+            this.updateCursorAromaSource(event);
+            
+            // Direct cursor control - update orbit controls
+            const spherical = new THREE.Spherical();
+            spherical.setFromVector3(this.camera.position.clone().sub(this.controls.target));
+            
+            // Adjust angles based on cursor movement
+            spherical.theta -= this.targetMouseX * 0.05;
+            spherical.phi += this.targetMouseY * 0.05;
+            
+            // Clamp phi to prevent flipping
+            spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi));
+            
+            // Apply new position
+            const newPosition = new THREE.Vector3().setFromSpherical(spherical).add(this.controls.target);
+            this.camera.position.copy(newPosition);
+            this.controls.update();
+        });
+        
+        // Touch support for mobile
+        window.addEventListener('touchmove', (event) => {
+            if (!this.isTracking || event.touches.length === 0) return;
+            
+            this.targetMouseX = (event.touches[0].clientX / window.innerWidth) * 2 - 1;
+            this.targetMouseY = -(event.touches[0].clientY / window.innerHeight) * 2 + 1;
+            
+            // Update cursor 3D position for aroma source
+            this.updateCursorAromaSource({ clientX: event.touches[0].clientX, clientY: event.touches[0].clientY });
+            
+            // Direct cursor control for touch
+            const spherical = new THREE.Spherical();
+            spherical.setFromVector3(this.camera.position.clone().sub(this.controls.target));
+            
+            spherical.theta -= this.targetMouseX * 0.05;
+            spherical.phi += this.targetMouseY * 0.05;
+            
+            spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi));
+            
+            const newPosition = new THREE.Vector3().setFromSpherical(spherical).add(this.controls.target);
+            this.camera.position.copy(newPosition);
+            this.controls.update();
+        });
+        
+        // Mouse wheel for zoom
+        window.addEventListener('wheel', (event) => {
+            if (!this.isTracking) return;
+            
+            event.preventDefault();
+            const zoomSpeed = 0.1;
+            const distance = this.camera.position.distanceTo(this.controls.target);
+            
+            if (event.deltaY < 0) {
+                // Zoom in
+                const newDistance = Math.max(1, distance - zoomSpeed);
+                const direction = this.camera.position.clone().sub(this.controls.target).normalize();
+                this.camera.position.copy(this.controls.target).add(direction.multiplyScalar(newDistance));
+            } else {
+                // Zoom out
+                const newDistance = Math.min(8, distance + zoomSpeed);
+                const direction = this.camera.position.clone().sub(this.controls.target).normalize();
+                this.camera.position.copy(this.controls.target).add(direction.multiplyScalar(newDistance));
+            }
+            
+            this.controls.update();
+        });
+        
+        // Click and drag for manual orbit control
+        let isDragging = false;
+        let previousMouseX = 0;
+        let previousMouseY = 0;
+        
+        window.addEventListener('mousedown', (event) => {
+            isDragging = true;
+            previousMouseX = event.clientX;
+            previousMouseY = event.clientY;
+            
+            // Trigger aroma burst on click
+            this.createAromaBurst(event);
+        });
+        
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+        
+        window.addEventListener('mousemove', (event) => {
+            if (!isDragging) return;
+            
+            const deltaX = event.clientX - previousMouseX;
+            const deltaY = event.clientY - previousMouseY;
+            
+            // Manual orbit control
+            const spherical = new THREE.Spherical();
+            spherical.setFromVector3(this.camera.position.clone().sub(this.controls.target));
+            
+            spherical.theta -= deltaX * 0.01;
+            spherical.phi += deltaY * 0.01;
+            
+            spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi));
+            
+            const newPosition = new THREE.Vector3().setFromSpherical(spherical).add(this.controls.target);
+            this.camera.position.copy(newPosition);
+            this.controls.update();
+            
+            previousMouseX = event.clientX;
+            previousMouseY = event.clientY;
+        });
+    }
+    
+    updateCursorAromaSource(event) {
+        // Convert mouse position to 3D world coordinates
+        const mouse = new THREE.Vector2();
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(mouse, this.camera);
+        
+        // Create a plane at y=0 to intersect with
+        const planeGeometry = new THREE.PlaneGeometry(20, 20);
+        const plane = new THREE.Mesh(planeGeometry);
+        plane.position.y = 0;
+        
+        const intersects = raycaster.intersectObject(plane);
+        if (intersects.length > 0) {
+            this.cursorAromaSource.copy(intersects[0].point);
+        } else {
+            // Fallback: project cursor to ground plane
+            const direction = raycaster.ray.direction.normalize();
+            const distance = -raycaster.ray.origin.y / direction.y;
+            this.cursorAromaSource.copy(raycaster.ray.origin).add(direction.multiplyScalar(distance));
+        }
+    }
+    
+    createAromaBurst(event) {
+        // Create a burst of aroma particles at cursor position
+        this.updateCursorAromaSource(event);
+        
+        // Create aroma particles
+        for (let i = 0; i < 50; i++) {
+            const particle = {
+                position: this.cursorAromaSource.clone(),
+                velocity: new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.1,
+                    Math.random() * 0.05 + 0.02,
+                    (Math.random() - 0.5) * 0.1
+                ),
+                life: 0,
+                maxLife: 2 + Math.random() * 2,
+                size: Math.random() * 0.02 + 0.01,
+                color: this.getRandomAromaColor(),
+                type: 'aroma'
+            };
+            this.clickAromaBurst.push(particle);
+        }
+        
+        // Create smoke particles at same location
+        for (let i = 0; i < 30; i++) {
+            const particle = {
+                position: this.cursorAromaSource.clone(),
+                velocity: new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.08,
+                    Math.random() * 0.03 + 0.01,
+                    (Math.random() - 0.5) * 0.08
+                ),
+                life: 0,
+                maxLife: 3 + Math.random() * 2,
+                size: Math.random() * 0.025 + 0.015,
+                color: new THREE.Color(0.8, 0.8, 0.8), // Gray smoke
+                type: 'smoke'
+            };
+            this.clickAromaBurst.push(particle);
+        }
+    }
+    
+    getRandomAromaColor() {
+        const colors = [
+            new THREE.Color(0.8, 0.6, 0.3), // Coffee brown
+            new THREE.Color(0.9, 0.7, 0.4), // Golden amber
+            new THREE.Color(0.7, 0.5, 0.3), // Deep spice
+            new THREE.Color(1.0, 0.8, 0.5), // Light gold
+            new THREE.Color(0.6, 0.4, 0.2)  // Dark coffee
+        ];
+        return colors[Math.floor(Math.random() * colors.length)];
+    }
+    
+    getRandomSmokeColor() {
+        const colors = [
+            new THREE.Color(0.9, 0.9, 0.9), // Light gray
+            new THREE.Color(0.8, 0.8, 0.8), // Medium gray
+            new THREE.Color(0.7, 0.7, 0.7), // Dark gray
+            new THREE.Color(0.85, 0.85, 0.85) // Light smoke
+        ];
+        return colors[Math.floor(Math.random() * colors.length)];
+    }
+    
+    initAromaEffects() {
+        // Create combined aroma and smoke particle system
+        const particleGeometry = new THREE.BufferGeometry();
+        const particlePositions = [];
+        const particleColors = [];
+        const particleSizes = [];
+        
+        for (let i = 0; i < 400; i++) { // Increased for both aroma and smoke
+            particlePositions.push(
+                Math.random() * 10 - 5,
+                Math.random() * 4,
+                Math.random() * 10 - 5
+            );
+            
+            // Mix of aroma colors and smoke colors
+            if (i < 250) {
+                // Aroma particles (warm colors)
+                const colorChoice = Math.random();
+                if (colorChoice < 0.4) {
+                    particleColors.push(0.8, 0.6, 0.3); // Coffee brown
+                } else if (colorChoice < 0.7) {
+                    particleColors.push(0.9, 0.7, 0.4); // Golden amber
+                } else {
+                    particleColors.push(0.7, 0.5, 0.3); // Deep spice
+                }
+            } else {
+                // Smoke particles (gray colors)
+                const grayShade = 0.7 + Math.random() * 0.2;
+                particleColors.push(grayShade, grayShade, grayShade);
+            }
+            
+            particleSizes.push(Math.random() * 3 + 1);
+        }
+        
+        particleGeometry.setAttribute('position', new THREE.Float32BufferAttribute(particlePositions, 3));
+        particleGeometry.setAttribute('color', new THREE.Float32BufferAttribute(particleColors, 3));
+        particleGeometry.setAttribute('size', new THREE.Float32BufferAttribute(particleSizes, 1));
+        
+        const particleMaterial = new THREE.PointsMaterial({
+            size: 0.05,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+        
+        this.aromaPoints = new THREE.Points(particleGeometry, particleMaterial);
+        scene.add(this.aromaPoints);
+    }
+    
+    update() {
+        // Smooth mouse following for visual effects
+        this.mouseX += (this.targetMouseX - this.mouseX) * 0.05;
+        this.mouseY += (this.targetMouseY - this.mouseY) * 0.05;
+        
+        // Update aroma intensity based on proximity to coffee elements
+        const distanceToCups = cups.reduce((min, cup) => {
+            const dist = this.camera.position.distanceTo(cup.position);
+            return Math.min(min, dist);
+        }, Infinity);
+        const distanceToCenser = this.camera.position.distanceTo(new THREE.Vector3(-0.9, 0.15, 0.3));
+        const distanceToFire = this.camera.position.distanceTo(new THREE.Vector3(-0.5, 0.3, -0.3));
+        const distanceToCursor = this.camera.position.distanceTo(this.cursorAromaSource);
+        const minDistance = Math.min(distanceToCups, distanceToCenser, distanceToFire, distanceToCursor);
+        
+        // Stronger aroma when cursor is near
+        this.aromaIntensity = Math.max(0, 1 - (minDistance / 4));
+        
+        // Add cursor proximity boost
+        const cursorBoost = Math.max(0, 1 - (distanceToCursor / 2));
+        this.aromaIntensity = Math.min(1, this.aromaIntensity + cursorBoost * 0.5);
+        
+        this.updateAromaEffects();
+        this.updateClickAromaBursts();
+    }
+    
+    updateClickAromaBursts() {
+        // Update click-triggered aroma and smoke bursts
+        const delta = 0.016; // Assuming 60fps
+        
+        for (let i = this.clickAromaBurst.length - 1; i >= 0; i--) {
+            const particle = this.clickAromaBurst[i];
+            particle.life += delta;
+            
+            if (particle.life >= particle.maxLife) {
+                this.clickAromaBurst.splice(i, 1);
+                continue;
+            }
+            
+            // Update particle position with different behavior for aroma vs smoke
+            particle.position.add(particle.velocity.clone().multiplyScalar(delta));
+            
+            if (particle.type === 'smoke') {
+                // Smoke particles rise slower and spread more
+                particle.velocity.y -= 0.005; // Less gravity
+                particle.velocity.multiplyScalar(0.995); // Less damping
+                particle.velocity.x += (Math.random() - 0.5) * 0.008; // More horizontal spread
+                particle.velocity.z += (Math.random() - 0.5) * 0.008;
+            } else {
+                // Aroma particles behave as before
+                particle.velocity.y -= 0.01; // More gravity
+                particle.velocity.multiplyScalar(0.98); // More damping
+                particle.position.x += (Math.random() - 0.5) * 0.005;
+                particle.position.z += (Math.random() - 0.5) * 0.005;
+            }
+        }
+    }
+    
+    updateAromaEffects() {
+        if (this.aromaPoints) {
+            this.aromaPoints.material.opacity = this.aromaIntensity * 0.3;
+            
+            // Animate aroma particles
+            const positions = this.aromaPoints.geometry.attributes.position.array;
+            const time = Date.now() * 0.001;
+            
+            for (let i = 0; i < positions.length; i += 3) {
+                const offsetX = Math.sin(time + i) * 0.01 * this.aromaIntensity;
+                const offsetY = Math.cos(time * 0.7 + i) * 0.02 * this.aromaIntensity;
+                const offsetZ = Math.sin(time * 0.5 + i) * 0.01 * this.aromaIntensity;
+                
+                positions[i] += offsetX;
+                positions[i + 1] += offsetY;
+                positions[i + 2] += offsetZ;
+                
+                // Attract some particles toward cursor
+                if (Math.random() < 0.1) {
+                    const particlePos = new THREE.Vector3(positions[i], positions[i + 1], positions[i + 2]);
+                    const toCursor = this.cursorAromaSource.clone().sub(particlePos).normalize().multiplyScalar(0.02);
+                    positions[i] += toCursor.x;
+                    positions[i + 1] += toCursor.y;
+                    positions[i + 2] += toCursor.z;
+                }
+                
+                // Wrap particles around bounds
+                if (Math.abs(positions[i]) > 5) positions[i] *= -0.9;
+                if (Math.abs(positions[i + 1]) > 2) positions[i + 1] *= -0.9;
+                if (Math.abs(positions[i + 2]) > 5) positions[i + 2] *= -0.9;
+            }
+            
+            this.aromaPoints.geometry.attributes.position.needsUpdate = true;
+        }
+    }
+    
+    toggleTracking() {
+        this.isTracking = !this.isTracking;
+        console.log('Cursor tracking:', this.isTracking ? 'ON' : 'OFF');
+    }
+}
+
 // Create authentic Ethiopian Jebena to traditional specifications
 function createJebena() {
     const group = new THREE.Group();
 
-    // Traditional Ethiopian Jebena shape - round base, long neck, spout for pouring
+    // Traditional Ethiopian Jebena shape - round base, long neck, spout for pouring (very small scale)
     const bodyPoints = [
         new THREE.Vector2(0, 0),           // round base point
-        new THREE.Vector2(0.12, 0.06),     // lower base curve
-        new THREE.Vector2(0.25, 0.15),     // round body start
-        new THREE.Vector2(0.35, 0.28),     // main round body
-        new THREE.Vector2(0.4, 0.45),      // upper round body
-        new THREE.Vector2(0.35, 0.62),     // shoulder transition
-        new THREE.Vector2(0.25, 0.72),     // shoulder
-        new THREE.Vector2(0.18, 0.82),     // long neck start
-        new THREE.Vector2(0.14, 0.96),     // long neck
-        new THREE.Vector2(0.12, 1.02),     // upper neck
-        new THREE.Vector2(0.14, 1.08),     // rim base
-        new THREE.Vector2(0.16, 1.14)      // rim top for pouring
+        new THREE.Vector2(0.05, 0.025),   // lower base curve (very small)
+        new THREE.Vector2(0.11, 0.06),    // round body start (very small)
+        new THREE.Vector2(0.15, 0.12),    // main round body (very small)
+        new THREE.Vector2(0.18, 0.20),    // upper round body (very small)
+        new THREE.Vector2(0.15, 0.27),    // shoulder transition (very small)
+        new THREE.Vector2(0.11, 0.32),    // shoulder (very small)
+        new THREE.Vector2(0.08, 0.37),    // long neck start (very small)
+        new THREE.Vector2(0.06, 0.43),    // long neck (very small)
+        new THREE.Vector2(0.05, 0.46),    // upper neck (very small)
+        new THREE.Vector2(0.06, 0.48),    // rim base (very small)
+        new THREE.Vector2(0.07, 0.51)     // rim top for pouring (very small)
     ];
     
     const bodyGeometry = new THREE.LatheGeometry(bodyPoints, 128);
@@ -416,75 +798,237 @@ function createJebena() {
     body.castShadow = true;
     body.receiveShadow = true;
 
-    // Traditional Ethiopian spout for pouring
+    // Traditional Ethiopian spout for pouring (very small scale)
     const spoutCurve = new THREE.CatmullRomCurve3([
-        new THREE.Vector3(0.35, 0.68, 0),
-        new THREE.Vector3(0.55, 0.64, 0),
-        new THREE.Vector3(0.68, 0.44, 0),
-        new THREE.Vector3(0.55, 0.24, 0),
-        new THREE.Vector3(0.4, 0.06, 0)
+        new THREE.Vector3(0.15, 0.30, 0),      // Adjusted for very small scale
+        new THREE.Vector3(0.25, 0.29, 0),      // Adjusted
+        new THREE.Vector3(0.30, 0.19, 0),      // Adjusted
+        new THREE.Vector3(0.25, 0.11, 0),      // Adjusted
+        new THREE.Vector3(0.18, 0.03, 0)       // Adjusted
     ]);
     
-    const spoutGeometry = new THREE.TubeGeometry(spoutCurve, 45, 0.065, 16, false);
+    const spoutGeometry = new THREE.TubeGeometry(spoutCurve, 45, 0.030, 16, false); // Very small radius
     const spout = new THREE.Mesh(spoutGeometry, jebenaMaterial);
     spout.castShadow = true;
     spout.receiveShadow = true;
 
-    // Traditional handle for communal use
+    // Traditional handle for communal use (smaller scale)
     const handleCurve = new THREE.CubicBezierCurve3(
-        new THREE.Vector3(-0.35, 0.64, 0),
-        new THREE.Vector3(-0.58, 0.84, 0.08),
-        new THREE.Vector3(-0.52, 1.06, -0.06),
-        new THREE.Vector3(-0.26, 1.1, 0)
+        new THREE.Vector3(-0.23, 0.43, 0),     // Adjusted
+        new THREE.Vector3(-0.39, 0.56, 0.05),  // Adjusted
+        new THREE.Vector3(-0.35, 0.71, -0.04), // Adjusted
+        new THREE.Vector3(-0.17, 0.73, 0)      // Adjusted
     );
     
-    const handleGeometry = new THREE.TubeGeometry(handleCurve, 55, 0.045, 20, false);
+    const handleGeometry = new THREE.TubeGeometry(handleCurve, 55, 0.032, 20, false); // Reduced radius
     const handle = new THREE.Mesh(handleGeometry, jebenaMaterial);
     handle.castShadow = true;
     handle.receiveShadow = true;
 
-    // Traditional lid for brewing
-    const lidGeometry = new THREE.ConeGeometry(0.16, 0.14, 32);
+    // Traditional lid for brewing (smaller scale)
+    const lidGeometry = new THREE.ConeGeometry(0.11, 0.10, 32); // Reduced size
     const lid = new THREE.Mesh(lidGeometry, jebenaMaterial);
-    lid.position.y = 1.12;
+    lid.position.y = 0.76; // Adjusted height
     lid.rotation.x = Math.PI;
     lid.castShadow = true;
     lid.receiveShadow = true;
     
-    // Traditional lid knob - simple and functional
-    const lidHandleBaseGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.03, 16);
+    // Traditional lid knob - simple and functional (smaller scale)
+    const lidHandleBaseGeometry = new THREE.CylinderGeometry(0.014, 0.014, 0.02, 16); // Reduced
     const lidHandleBase = new THREE.Mesh(lidHandleBaseGeometry, jebenaMaterial);
-    lidHandleBase.position.y = 1.19;
+    lidHandleBase.position.y = 0.81; // Adjusted height
     lidHandleBase.castShadow = true;
     lidHandleBase.receiveShadow = true;
     
-    const lidHandleTopGeometry = new THREE.SphereGeometry(0.012, 16, 16);
+    const lidHandleTopGeometry = new THREE.SphereGeometry(0.008, 16, 16); // Reduced
     const lidHandleMaterial = new THREE.MeshPhysicalMaterial({
         color: 0x1a1611,
         roughness: 0.6,
         metalness: 0.05
     });
     const lidHandleTop = new THREE.Mesh(lidHandleTopGeometry, lidHandleMaterial);
-    lidHandleTop.position.y = 1.22;
+    lidHandleTop.position.y = 0.83; // Adjusted height
     lidHandleTop.castShadow = true;
     lidHandleTop.receiveShadow = true;
 
-    // Traditional rim - functional for pouring
-    const rimGeometry = new THREE.TorusGeometry(0.14, 0.006, 24, 64);
+    // Traditional rim - functional for pouring (smaller scale)
+    const rimGeometry = new THREE.TorusGeometry(0.09, 0.004, 24, 64); // Reduced
     const rimMaterial = new THREE.MeshPhysicalMaterial({
         color: 0x1a1611,
         roughness: 0.6,
         metalness: 0.05
     });
     const rim = new THREE.Mesh(rimGeometry, rimMaterial);
-    rim.position.y = 1.14;
+    rim.position.y = 0.76; // Adjusted height
     rim.rotation.x = Math.PI / 2;
     rim.castShadow = true;
     rim.receiveShadow = true;
 
     group.add(body, spout, handle, lid, lidHandleBase, lidHandleTop, rim);
 
-    return { group, material: jebenaMaterial };
+    return { group, material: jebenaMaterial, position: new THREE.Vector3(-0.2, 0, -0.3) };
+}
+
+// Create traditional Ethiopian fire holder (charcoal stove/brazier) with fire
+function createFireHolder() {
+    const group = new THREE.Group();
+    
+    // Fire holder base - traditional clay/iron brazier
+    const baseGeometry = new THREE.CylinderGeometry(0.25, 0.3, 0.15, 32);
+    const baseMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0x2a1810, // Dark clay/iron color
+        roughness: 0.8,
+        metalness: 0.1,
+        clearcoat: 0.1
+    });
+    const base = new THREE.Mesh(baseGeometry, baseMaterial);
+    base.position.y = 0.075;
+    base.castShadow = true;
+    base.receiveShadow = true;
+    
+    // Fire holder bowl - where charcoal sits
+    const bowlGeometry = new THREE.CylinderGeometry(0.22, 0.25, 0.12, 32);
+    const bowlMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0x1a0f0a, // Darker interior
+        roughness: 0.9,
+        metalness: 0.05
+    });
+    const bowl = new THREE.Mesh(bowlGeometry, bowlMaterial);
+    bowl.position.y = 0.19;
+    bowl.castShadow = true;
+    bowl.receiveShadow = true;
+    
+    // Fire holder rim - decorative edge
+    const rimGeometry = new THREE.TorusGeometry(0.25, 0.02, 16, 32);
+    const rimMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0x3a2820, // Slightly lighter rim
+        roughness: 0.7,
+        metalness: 0.15
+    });
+    const rim = new THREE.Mesh(rimGeometry, rimMaterial);
+    rim.position.y = 0.25;
+    rim.rotation.x = Math.PI / 2;
+    rim.castShadow = true;
+    rim.receiveShadow = true;
+    
+    // Traditional legs/supports
+    const legGeometry = new THREE.CylinderGeometry(0.015, 0.02, 0.2, 16);
+    const legMaterial = baseMaterial;
+    
+    const legPositions = [
+        { x: 0.15, z: 0.15 },
+        { x: -0.15, z: 0.15 },
+        { x: 0.15, z: -0.15 },
+        { x: -0.15, z: -0.15 }
+    ];
+    
+    legPositions.forEach(pos => {
+        const leg = new THREE.Mesh(legGeometry, legMaterial);
+        leg.position.set(pos.x, 0.1, pos.z);
+        leg.castShadow = true;
+        leg.receiveShadow = true;
+        group.add(leg);
+    });
+    
+    // Charcoal pieces inside
+    const charcoalGeometry = new THREE.BoxGeometry(0.03, 0.02, 0.03);
+    const charcoalMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0x0a0808, // Very dark charcoal
+        roughness: 0.95,
+        metalness: 0.02
+    });
+    
+    // Add multiple charcoal pieces
+    for (let i = 0; i < 12; i++) {
+        const charcoal = new THREE.Mesh(charcoalGeometry, charcoalMaterial);
+        charcoal.position.set(
+            (Math.random() - 0.5) * 0.3,
+            0.22 + Math.random() * 0.03,
+            (Math.random() - 0.5) * 0.3
+        );
+        charcoal.rotation.set(
+            Math.random() * Math.PI,
+            Math.random() * Math.PI,
+            Math.random() * Math.PI
+        );
+        charcoal.castShadow = true;
+        charcoal.receiveShadow = true;
+        group.add(charcoal);
+    }
+    
+    // Fire particles system
+    const fireGeometry = new THREE.BufferGeometry();
+    const firePositions = [];
+    const fireColors = [];
+    const fireSizes = [];
+    
+    for (let i = 0; i < 100; i++) {
+        firePositions.push(
+            (Math.random() - 0.5) * 0.4,
+            Math.random() * 0.2 + 0.2,
+            (Math.random() - 0.5) * 0.4
+        );
+        
+        // Fire colors - from white hot to deep orange
+        const colorChoice = Math.random();
+        if (colorChoice < 0.3) {
+            fireColors.push(1.0, 1.0, 0.8); // White hot
+        } else if (colorChoice < 0.6) {
+            fireColors.push(1.0, 0.8, 0.3); // Yellow orange
+        } else if (colorChoice < 0.85) {
+            fireColors.push(1.0, 0.4, 0.1); // Orange red
+        } else {
+            fireColors.push(0.8, 0.2, 0.05); // Deep red
+        }
+        
+        fireSizes.push(Math.random() * 0.02 + 0.005);
+    }
+    
+    fireGeometry.setAttribute('position', new THREE.Float32BufferAttribute(firePositions, 3));
+    fireGeometry.setAttribute('color', new THREE.Float32BufferAttribute(fireColors, 3));
+    fireGeometry.setAttribute('size', new THREE.Float32BufferAttribute(fireSizes, 1));
+    
+    const fireMaterial = new THREE.PointsMaterial({
+        size: 0.05,
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.8,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+    });
+    
+    const fireParticles = new THREE.Points(fireGeometry, fireMaterial);
+    fireParticles.position.y = 0.25;
+    group.add(fireParticles);
+    
+    // Fire glow light
+    const fireLight = new THREE.PointLight(0xff6600, 2, 3);
+    fireLight.position.set(0, 0.3, 0);
+    fireLight.castShadow = true;
+    fireLight.shadow.mapSize.width = 512;
+    fireLight.shadow.mapSize.height = 512;
+    group.add(fireLight);
+    
+    // Ember glow
+    const emberGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+    const emberMaterial = new THREE.MeshBasicMaterial({
+        color: 0xff4411,
+        transparent: true,
+        opacity: 0.3
+    });
+    const emberGlow = new THREE.Mesh(emberGeometry, emberMaterial);
+    emberGlow.position.y = 0.25;
+    group.add(emberGlow);
+    
+    group.add(base, bowl, rim);
+    
+    return { 
+        group, 
+        fireParticles, 
+        fireLight, 
+        emberGlow,
+        position: new THREE.Vector3(-0.5, 0, -0.3)
+    };
 }
 
 // Create ornate brass censer with smoking incense (enhanced)
@@ -823,51 +1367,77 @@ function createCup() {
     return { group, position: new THREE.Vector3(0.85, 0, 0.25) };
 }
 
-// Create enhanced coffee beans with better distribution
-function createCoffeeBeans() {
-    const group = new THREE.Group();
+// Create image display plane with automatic swapping
+function createImageDisplay() {
+    const textureLoader = new THREE.TextureLoader();
     
-    const beanGeometry = new THREE.SphereGeometry(0.015, 8, 6);
-    beanGeometry.scale(1.2, 0.8, 1);
+    // Array of images - using relative path for browser access
+    const images = [
+        './src/assets/image/Copilot_20260327_113450.png',   // relative path for browser
+        './src/assets/image/Copilot_20260327_113450.png',   // placeholder for additional images
+        './src/assets/image/Copilot_20260327_113450.png'    // placeholder for additional images
+    ];
     
-    const beanMaterial = new THREE.MeshStandardMaterial({
-        color: 0x4a2c17,
-        roughness: 0.8,
-        metalness: 0.1
+    let currentIndex = 0;
+    
+    // Create plane geometry
+    const geometry = new THREE.PlaneGeometry(4, 3);
+    
+    // Create material with initial texture and error handling
+    const material = new THREE.MeshBasicMaterial({ 
+        map: textureLoader.load(
+            images[currentIndex],
+            // onLoad callback
+            (texture) => {
+                console.log('Image loaded successfully!');
+            },
+            // onProgress callback
+            (progress) => {
+                console.log('Loading progress:', progress);
+            },
+            // onError callback
+            (error) => {
+                console.error('Error loading image:', error);
+                // Create a fallback colored material
+                material.color.set(0x444444);
+                material.needsUpdate = true;
+            }
+        ),
+        transparent: true,
+        opacity: 0.9
     });
     
-    // Create more coffee beans with better distribution
-    const numBeans = 40;
+    const plane = new THREE.Mesh(geometry, material);
     
-    for (let i = 0; i < numBeans; i++) {
-        const bean = new THREE.Mesh(beanGeometry, beanMaterial);
-        
-        // Distribute beans in realistic patterns
-        const angle = Math.random() * Math.PI * 2;
-        const radius = 0.3 + Math.random() * 0.8;
-        
-        bean.position.set(
-            Math.cos(angle) * radius,
-            0.02 + Math.random() * 0.05,
-            Math.sin(angle) * radius
+    // Position the plane in the background
+    plane.position.set(0, 1.5, -2.5);
+    plane.rotation.x = 0; // Face forward
+    
+    // Function to update texture
+    function updateTexture() {
+        textureLoader.load(
+            images[currentIndex],
+            (texture) => {
+                plane.material.map = texture;
+                plane.material.needsUpdate = true;
+                console.log('Texture updated successfully!');
+            },
+            undefined,
+            (error) => {
+                console.error('Error updating texture:', error);
+            }
         );
-        
-        // More realistic rotation
-        bean.rotation.x = Math.random() * Math.PI;
-        bean.rotation.y = Math.random() * Math.PI;
-        bean.rotation.z = Math.random() * Math.PI;
-        
-        // Vary bean sizes slightly
-        const scale = 0.8 + Math.random() * 0.4;
-        bean.scale.set(scale, scale, scale);
-        
-        bean.castShadow = true;
-        bean.receiveShadow = true;
-        group.add(bean);
     }
     
-    return group;
+    // Automate swapping every 5 seconds
+    setInterval(() => {
+        currentIndex = (currentIndex + 1) % images.length;
+        updateTexture();
+    }, 5000);
+    
+    return plane;
 }
+
 // Create enhanced woven basket with red and green pattern
 function createBasket() {
     const group = new THREE.Group();
@@ -960,40 +1530,96 @@ function createBasket() {
     return group;
 }
 
-// Create draped fabric background
-function createFabric() {
+// Create enhanced coffee beans with better distribution
+function createCoffeeBeans() {
     const group = new THREE.Group();
     
-    // Fabric geometry
-    const fabricGeometry = new THREE.PlaneGeometry(3, 2, 32, 32);
+    const beanGeometry = new THREE.SphereGeometry(0.015, 8, 6);
+    beanGeometry.scale(1.2, 0.8, 1);
     
-    // Add some wave to the fabric
-    const vertices = fabricGeometry.attributes.position.array;
-    for (let i = 0; i < vertices.length; i += 3) {
-        const x = vertices[i];
-        const y = vertices[i + 1];
-        vertices[i + 2] = Math.sin(x * 2) * Math.cos(y * 2) * 0.1;
-    }
-    fabricGeometry.attributes.position.needsUpdate = true;
-    fabricGeometry.computeVertexNormals();
-    
-    // Light fabric material
-    const fabricMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0xf8f8f8,
-        roughness: 0.9,
-        metalness: 0.05,
-        clearcoat: 0.1,
-        side: THREE.DoubleSide
+    const beanMaterial = new THREE.MeshStandardMaterial({
+        color: 0x4a2c17,
+        roughness: 0.8,
+        metalness: 0.1
     });
     
-    const fabric = new THREE.Mesh(fabricGeometry, fabricMaterial);
-    fabric.position.set(0, 1.5, -1.5);
-    fabric.rotation.x = -Math.PI / 6;
+    // Create more coffee beans with better distribution
+    const numBeans = 40;
     
-    group.add(fabric);
+    for (let i = 0; i < numBeans; i++) {
+        const bean = new THREE.Mesh(beanGeometry, beanMaterial);
+        
+        // Distribute beans in realistic patterns
+        const angle = Math.random() * Math.PI * 2;
+        const radius = 0.3 + Math.random() * 0.8;
+        
+        bean.position.set(
+            Math.cos(angle) * radius,
+            0.02 + Math.random() * 0.05,
+            Math.sin(angle) * radius
+        );
+        
+        // More realistic rotation
+        bean.rotation.x = Math.random() * Math.PI;
+        bean.rotation.y = Math.random() * Math.PI;
+        bean.rotation.z = Math.random() * Math.PI;
+        
+        // Vary bean sizes slightly
+        const scale = 0.8 + Math.random() * 0.4;
+        bean.scale.set(scale, scale, scale);
+        
+        bean.castShadow = true;
+        bean.receiveShadow = true;
+        group.add(bean);
+    }
+    
+    // Add some beans around the jebena base
+    for (let i = 0; i < 8; i++) {
+        const bean = new THREE.Mesh(beanGeometry, beanMaterial);
+        
+        const angle = (i / 8) * Math.PI * 2;
+        const radius = 0.25 + Math.random() * 0.15;
+        
+        bean.position.set(
+            Math.cos(angle) * radius,
+            0.01,
+            Math.sin(angle) * radius
+        );
+        
+        bean.rotation.x = Math.random() * Math.PI;
+        bean.rotation.y = Math.random() * Math.PI;
+        bean.rotation.z = Math.random() * Math.PI;
+        
+        const scale = 0.9 + Math.random() * 0.2;
+        bean.scale.set(scale, scale, scale);
+        
+        bean.castShadow = true;
+        bean.receiveShadow = true;
+        group.add(bean);
+    }
+    
+    // Add some beans near the censer
+    for (let i = 0; i < 5; i++) {
+        const bean = new THREE.Mesh(beanGeometry, beanMaterial);
+        
+        bean.position.set(
+            -0.9 + (Math.random() - 0.5) * 0.3,
+            0.01,
+            0.3 + (Math.random() - 0.5) * 0.3
+        );
+        
+        bean.rotation.x = Math.random() * Math.PI;
+        bean.rotation.y = Math.random() * Math.PI;
+        bean.rotation.z = Math.random() * Math.PI;
+        
+        bean.castShadow = true;
+        bean.receiveShadow = true;
+        group.add(bean);
+    }
     
     return group;
 }
+
 
 // Update woven mat with enhanced colors and tassels
 function createMesob() {
@@ -1314,24 +1940,55 @@ class SteamSystem {
     }
 }
 
-// Add all elements with exact positioning from reference
-const { group: jebena, material: jebenaMat } = createJebena();
-jebena.position.set(0, 0.1, 0);
-jebena.castShadow = true;
-jebena.receiveShadow = true;
-scene.add(jebena);
+// Initialize camera automation
+const cameraAutomation = new CameraAutomation(camera, controls);
 
+// Add keyboard controls for tracking
+window.addEventListener('keydown', (event) => {
+    if (event.key === ' ' || event.key === 'Spacebar') {
+        event.preventDefault();
+        cameraAutomation.toggleTracking();
+    }
+});
+
+// Add all elements without jebena
 const { group: censer, position: censerPos } = createCenser();
 censer.position.copy(censerPos);
 censer.castShadow = true;
 censer.receiveShadow = true;
 scene.add(censer);
 
-const { group: cup, position: cupPos } = createCup();
-cup.position.copy(cupPos);
-cup.castShadow = true;
-cup.receiveShadow = true;
-scene.add(cup);
+// Add traditional fire holder with fire
+const { group: fireHolder, fireParticles, fireLight, emberGlow, position: fireHolderPos } = createFireHolder();
+fireHolder.position.copy(fireHolderPos);
+fireHolder.castShadow = true;
+fireHolder.receiveShadow = true;
+scene.add(fireHolder);
+
+// Create multiple Sini cups for communal coffee ceremony
+const cups = [];
+const cupPositions = [
+    { x: 0.85, z: 0.25 },  // Main cup
+    { x: 1.2, z: 0.1 },   // Right cup
+    { x: 0.5, z: 0.4 },   // Left cup
+    { x: 1.0, z: -0.2 },  // Back right cup
+    { x: 0.6, z: 0.6 }    // Front left cup
+];
+
+for (let i = 0; i < cupPositions.length; i++) {
+    const { group: cup, position: cupPos } = createCup();
+    
+    // Position each cup at its designated location
+    cup.position.set(cupPositions[i].x, 0, cupPositions[i].z);
+    
+    // Add slight rotation for variety
+    cup.rotation.y = (Math.random() - 0.5) * 0.3;
+    
+    cup.castShadow = true;
+    cup.receiveShadow = true;
+    scene.add(cup);
+    cups.push(cup);
+}
 
 const mesob = createMesob();
 mesob.castShadow = true;
@@ -1343,19 +2000,26 @@ basket.castShadow = true;
 basket.receiveShadow = true;
 scene.add(basket);
 
-const fabric = createFabric();
-scene.add(fabric);
+const imageDisplay = createImageDisplay();
+scene.add(imageDisplay);
+
+// Add automatic rotation to the background image
+imageDisplay.userData = { rotationSpeed: 0.002 };
 
 const coffeeBeans = createCoffeeBeans();
 coffeeBeans.castShadow = true;
 coffeeBeans.receiveShadow = true;
 scene.add(coffeeBeans);
 
-// Steam from cup
-const steam = new SteamSystem();
-steam.group.position.copy(cupPos);
-steam.group.position.y += 0.25;
-scene.add(steam.group);
+// Steam from cups - multiple sources
+const steamSystems = [];
+cups.forEach((cup, index) => {
+    const steam = new SteamSystem();
+    steam.group.position.copy(cup.position);
+    steam.group.position.y += 0.25;
+    scene.add(steam.group);
+    steamSystems.push(steam);
+});
 
 // Incense smoke from censer
 const incenseSmoke = new IncenseSmokeSystem();
@@ -1422,6 +2086,8 @@ setTimeout(() => {
 // Animation Loop
 const clock = new THREE.Clock();
 let flickerTime = 0;
+let fireFlickerTime = 0;
+let sceneRotation = 0;
 
 function animate() {
     requestAnimationFrame(animate);
@@ -1429,24 +2095,65 @@ function animate() {
     const delta = clock.getDelta();
     const elapsed = clock.getElapsedTime();
 
-    if (Math.random() < 0.15) {
-        steam.spawn(new THREE.Vector3(0, 0, 0));
+    // Auto-rotate the entire scene
+    sceneRotation += 0.005; // Rotation speed
+    scene.rotation.y = sceneRotation;
+
+    // Update fire effects
+    fireFlickerTime += delta;
+    const fireIntensity = 1.5 + Math.sin(fireFlickerTime * 8) * 0.3;
+    fireLight.intensity = fireIntensity;
+    
+    // Animate fire particles
+    const firePositions = fireParticles.geometry.attributes.position.array;
+    const fireTime = Date.now() * 0.001;
+    
+    for (let i = 0; i < firePositions.length; i += 3) {
+        // Rising fire particles
+        firePositions[i + 1] += 0.01; // Rise up
+        firePositions[i] += Math.sin(fireTime + i) * 0.005; // Sway
+        firePositions[i + 2] += Math.cos(fireTime * 0.7 + i) * 0.005; // Sway
+        
+        // Reset particles that rise too high
+        if (firePositions[i + 1] > 0.6) {
+            firePositions[i + 1] = 0.2;
+            firePositions[i] = (Math.random() - 0.5) * 0.4;
+            firePositions[i + 2] = (Math.random() - 0.5) * 0.4;
+        }
     }
-    steam.update(delta);
+    fireParticles.geometry.attributes.position.needsUpdate = true;
+    
+    // Animate ember glow
+    emberGlow.material.opacity = 0.2 + Math.sin(fireFlickerTime * 12) * 0.1;
+
+    // Rotate background image automatically
+    imageDisplay.rotation.z += imageDisplay.userData.rotationSpeed;
+
+    if (Math.random() < 0.15) {
+        steamSystems.forEach((steam, index) => {
+            // Stagger steam spawning for more natural effect
+            if (Math.random() < 0.3) {
+                steam.spawn(cups[index].position);
+            }
+        });
+    }
+    steamSystems.forEach(steam => steam.update(delta));
     
     if (Math.random() < 0.1) {
-        incenseSmoke.spawn(new THREE.Vector3(0, 0, 0));
+        incenseSmoke.spawn(censerPos);
     }
     incenseSmoke.update(delta);
 
-    const glowIntensity = 0.2 + Math.sin(elapsed * 2) * 0.15;
-    jebenaMat.emissiveIntensity = glowIntensity;
+    // Remove jebena glow effect since jebena was removed
 
     flickerTime += delta;
     keyLight.intensity = 1.8 + Math.sin(flickerTime * 8) * 0.05;
 
     controls.update();
     if (roundManager) roundManager.update();
+    
+    // Update camera automation
+    cameraAutomation.update();
     
     renderer.render(scene, camera);
 }

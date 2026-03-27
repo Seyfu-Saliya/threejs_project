@@ -37,6 +37,196 @@ canvas {
     pointer-events: none;
 }
 
+/* Coffee Logo Styles */
+.coffee-logo {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 60;
+    pointer-events: none;
+}
+
+.logo-container {
+    position: relative;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: logoRotate 8s linear infinite;
+}
+
+.coffee-bean {
+    position: absolute;
+    width: 20px;
+    height: 30px;
+    animation: beanFloat 3s ease-in-out infinite;
+}
+
+.bean-2 {
+    transform: rotate(180deg) translateX(15px);
+    animation-delay: 1.5s;
+}
+
+.bean-shape {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #8B4513 0%, #D2691E 50%, #A0522D 100%);
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    position: relative;
+    box-shadow: 0 2px 8px rgba(139, 69, 19, 0.3);
+}
+
+.bean-crease {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 2px;
+    height: 80%;
+    background: linear-gradient(to bottom, #6B3410, #8B4513);
+    border-radius: 1px;
+}
+
+.steam-particles {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 30px;
+    height: 30px;
+}
+
+.steam {
+    position: absolute;
+    width: 3px;
+    height: 8px;
+    background: linear-gradient(to top, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0));
+    border-radius: 50%;
+    animation: steamRise 2s ease-out infinite;
+}
+
+.steam-2 {
+    left: 10px;
+    animation-delay: 0.7s;
+}
+
+.steam-3 {
+    left: 20px;
+    animation-delay: 1.4s;
+}
+
+.logo-text {
+    margin-top: 5px;
+    text-align: center;
+    font-family: 'Cinzel', serif;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #d4a853;
+    letter-spacing: 0.2rem;
+    text-transform: uppercase;
+    text-shadow: 0 0 10px rgba(212, 168, 83, 0.5);
+    animation: textGlow 2s ease-in-out infinite alternate;
+}
+
+/* Logo Animations */
+@keyframes logoRotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes beanFloat {
+    0%, 100% { transform: translateY(0px) scale(1); }
+    50% { transform: translateY(-5px) scale(1.05); }
+}
+
+@keyframes steamRise {
+    0% {
+        transform: translateY(0) scale(1);
+        opacity: 0;
+    }
+    20% {
+        opacity: 0.8;
+    }
+    100% {
+        transform: translateY(-20px) scale(1.5);
+        opacity: 0;
+    }
+}
+
+@keyframes textGlow {
+    0% { 
+        text-shadow: 0 0 10px rgba(212, 168, 83, 0.5);
+        transform: scale(1);
+    }
+    100% { 
+        text-shadow: 0 0 20px rgba(212, 168, 83, 0.8);
+        transform: scale(1.05);
+    }
+}
+
+/* Navigation Bar */
+.navbar {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 50;
+    pointer-events: auto;
+}
+
+.nav-container {
+    display: flex;
+    gap: 2px;
+    background: rgba(26, 15, 10, 0.8);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(212, 168, 83, 0.3);
+    border-radius: 12px;
+    padding: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.nav-item {
+    color: #d4a853;
+    text-decoration: none;
+    padding: 12px 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    letter-spacing: 0.1rem;
+    text-transform: uppercase;
+    transition: all 0.3s ease;
+    border-radius: 8px;
+    position: relative;
+    overflow: hidden;
+}
+
+.nav-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(212, 168, 83, 0.2), transparent);
+    transition: left 0.5s ease;
+}
+
+.nav-item:hover::before {
+    left: 100%;
+}
+
+.nav-item:hover {
+    background: rgba(212, 168, 83, 0.15);
+    color: #f5f0e8;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(212, 168, 83, 0.2);
+}
+
+.nav-item.active {
+    background: rgba(212, 168, 83, 0.25);
+    color: #f5f0e8;
+    box-shadow: 0 0 15px rgba(212, 168, 83, 0.3);
+}
+
 #hud {
     position: fixed;
     top: 40px;
@@ -79,11 +269,123 @@ canvas {
 
 .ceremony-status {
     position: fixed;
-    bottom: 30px;
-    left: 30px;
+    bottom: 130px;
+    left: 20px;
     color: #d4a853;
-    font-size: 0.8rem;
-    letter-spacing: 0.2rem;
-    opacity: 0.5;
+    font-size: 0.7rem;
+    letter-spacing: 0.15rem;
+    opacity: 0.7;
     text-transform: uppercase;
+    font-family: 'Cinzel', serif;
+    z-index: 45;
+}
+
+/* Footer Styles */
+.footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, rgba(26, 15, 10, 0.85) 0%, rgba(61, 36, 32, 0.85) 100%);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(212, 168, 83, 0.2);
+    padding: 18px 0;
+    z-index: 40;
+    pointer-events: none;
+    max-height: 120px;
+}
+
+.footer-content {
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-start;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+    gap: 20px;
+}
+
+.footer-section {
+    flex: 1;
+    text-align: center;
+    max-width: 250px;
+}
+
+.footer-section h3 {
+    color: #d4a853;
+    font-size: 0.9rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    letter-spacing: 0.1rem;
+    text-transform: uppercase;
+}
+
+.footer-section p {
+    color: #f5f0e8;
+    font-size: 0.7rem;
+    line-height: 1.3;
+    opacity: 0.8;
+    font-family: 'Cinzel', serif;
+    margin: 0;
+}
+
+.footer-bottom {
+    text-align: center;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(212, 168, 83, 0.1);
+}
+
+.footer-bottom p {
+    color: #d4a853;
+    font-size: 0.65rem;
+    opacity: 0.6;
+    letter-spacing: 0.1rem;
+    text-transform: uppercase;
+    margin: 0;
+}
+
+/* Responsive Footer */
+@media (max-width: 768px) {
+    .footer {
+        padding: 15px 0;
+        max-height: 90px;
+    }
+    
+    .footer-content {
+        flex-direction: row;
+        gap: 15px;
+        padding: 0 15px;
+    }
+    
+    .footer-section {
+        max-width: 100%;
+        flex: 1;
+    }
+    
+    .footer-section h3 {
+        font-size: 0.7rem;
+        margin-bottom: 3px;
+    }
+    
+    .footer-section p {
+        font-size: 0.5rem;
+        line-height: 1.1;
+    }
+    
+    .footer-bottom {
+        margin-top: 5px;
+        padding-top: 5px;
+    }
+    
+    .footer-bottom p {
+        font-size: 0.5rem;
+    }
+    
+    .ceremony-status {
+        bottom: 105px;
+        left: 15px;
+        font-size: 0.6rem;
+        letter-spacing: 0.1rem;
+    }
 }
