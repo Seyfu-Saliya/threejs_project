@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ethiopian Coffee Ceremony - 3D Experience</title>
+  <script type="module" crossorigin src="/assets/index-C0X1d1Oe.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-BbAiHczZ.css">
+</head>
+<body>
+    <div id="loading">Preparing the ceremony...</div>
+
+    <!-- Hero -->
+    <section class="hero" id="home">
+        <div class="hero-card">
+            <h1 class="hero-title">Experience the Ethiopian Bunna Ceremony in 3D</h1>
+            <p class="hero-subtitle">Explore Abol, Tona, and Bereka through an interactive 3D scene.</p>
+            <div class="feature-strip" aria-label="Highlights">
+                <div class="feature-item">
+                    <div class="feature-title">Abol / Tona / Bereka</div>
+                    <div class="feature-desc">Follow the three traditional rounds.</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-title">Interactive 3D</div>
+                    <div class="feature-desc">Orbit, zoom, and explore the ceremony.</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-title">Cultural notes</div>
+                    <div class="feature-desc">Learn the meaning behind each element.</div>
+                </div>
+            </div>
+            <div class="hero-actions">
+                <button class="hero-btn hero-btn-primary" id="start-tour-btn" type="button" onclick="window.startTour && window.startTour()">Start Tour</button>
+                <a class="hero-btn hero-btn-secondary" href="#ceremony" id="learn-ceremony-btn">Learn the Ceremony</a>
+            </div>
+            <div class="hero-hint">Tip: Drag to rotate • Scroll to zoom • Press Space to toggle camera tracking</div>
+        </div>
+    </section>
+    
+    <!-- Coffee Logo -->
+    <div class="coffee-logo">
+        <div class="logo-container">
+            <div class="coffee-bean">
+                <div class="bean-shape"></div>
+                <div class="bean-crease"></div>
+            </div>
+            <div class="coffee-bean bean-2">
+                <div class="bean-shape"></div>
+                <div class="bean-crease"></div>
+            </div>
+            <div class="steam-particles">
+                <div class="steam"></div>
+                <div class="steam steam-2"></div>
+                <div class="steam steam-3"></div>
+            </div>
+        </div>
+        <div class="logo-text">BUNNA</div>
+    </div>
+    
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="#home" class="nav-item active">Home</a>
+            <a href="#ceremony" class="nav-item">Ceremony</a>
+            <a href="#culture" class="nav-item">Culture</a>
+            <a href="#about" class="nav-item">About</a>
+        </div>
+    </nav>
+
+    <!-- Anchor sections (for CTA + navbar) -->
+    <div id="ceremony" class="page-anchor" aria-hidden="true"></div>
+    <div id="culture" class="page-anchor" aria-hidden="true"></div>
+    <div id="about" class="page-anchor" aria-hidden="true"></div>
+    
+    <div id="hud">
+        <div id="round-info" class="round-info">
+            <div id="round-name-en" class="round-name-en">Abol</div>
+            <div id="round-name-am" class="round-name-am">አቦል</div>
+        </div>
+    </div>
+
+    <div class="ceremony-status">
+  Traditional Ethiopian Bunna Ceremony<br>
+  Developed by SSR Technologies<br>
+    Three.js 
+</div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3>Ethiopian Coffee Ceremony</h3>
+                <p>Experience the rich tradition of Ethiopian coffee culture through interactive 3D visualization.</p>
+            </div>
+            <div class="footer-section">
+                <h3>Cultural Heritage</h3>
+                <p>Bunna is more than coffee - it's a symbol of hospitality, community, and respect in Ethiopian culture.</p>
+            </div>
+            <div class="footer-section">
+                <h3>Technology</h3>
+                <p>Built with Three.js, WebGL, and modern web technologies to preserve and share cultural traditions.</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 SSR Technologies. Preserving Ethiopian cultural heritage through digital innovation.</p>
+        </div>
+    </footer>
+
+</body>
+</html>
