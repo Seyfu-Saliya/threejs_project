@@ -487,346 +487,6 @@ function createJebena() {
     return { group, material: jebenaMaterial };
 }
 
-// Create charcoal stove/brazier with fire animation
-function createCharcoalStove() {
-    const group = new THREE.Group();
-    
-    // Stove body - traditional clay brazier
-    const stoveGeometry = new THREE.CylinderGeometry(0.25, 0.3, 0.15, 32);
-    const stoveMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0x3e2723,
-        roughness: 0.8,
-        metalness: 0.1
-    });
-    const stove = new THREE.Mesh(stoveGeometry, stoveMaterial);
-    stove.position.y = 0.075;
-    stove.castShadow = true;
-    stove.receiveShadow = true;
-    
-    // Stove rim
-    const rimGeometry = new THREE.TorusGeometry(0.3, 0.02, 16, 32);
-    const rim = new THREE.Mesh(rimGeometry, stoveMaterial);
-    rim.position.y = 0.15;
-    rim.rotation.x = Math.PI / 2;
-    rim.castShadow = true;
-    
-    // Charcoal pieces
-    const charcoalMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0x1a1a1a,
-        roughness: 0.9,
-        metalness: 0.05
-    });
-    
-    for (let i = 0; i < 8; i++) {
-        const charcoalGeometry = new THREE.BoxGeometry(0.03, 0.02, 0.03);
-        const charcoal = new THREE.Mesh(charcoalGeometry, charcoalMaterial);
-        const angle = (i / 8) * Math.PI * 2;
-        const radius = 0.15 + Math.random() * 0.08;
-        charcoal.position.set(
-            Math.cos(angle) * radius,
-            0.12,
-            Math.sin(angle) * radius
-        );
-        charcoal.rotation.set(
-            Math.random() * Math.PI,
-            Math.random() * Math.PI,
-            Math.random() * Math.PI
-        );
-        charcoal.castShadow = true;
-        group.add(charcoal);
-    }
-    
-    // Fire particles system
-    const fireParticles = [];
-    const fireGroup = new THREE.Group();
-    
-    const fireCanvas = document.createElement('canvas');
-    fireCanvas.width = 64;
-    fireCanvas.height = 64;
-    const fireCtx = fireCanvas.getContext('2d');
-    const fireGrad = fireCtx.createRadialGradient(32, 32, 0, 32, 32, 32);
-    fireGrad.addColorStop(0, 'rgba(255, 200, 0, 0.8)');
-    fireGrad.addColorStop(0.5, 'rgba(255, 100, 0, 0.4)');
-    fireGrad.addColorStop(1, 'rgba(255, 0, 0, 0)');
-    fireCtx.fillStyle = fireGrad;
-    fireCtx.fillRect(0, 0, 64, 64);
-    const fireTexture = new THREE.CanvasTexture(fireCanvas);
-    
-    const fireMaterial = new THREE.SpriteMaterial({
-        map: fireTexture,
-        color: 0xff6600,
-        transparent: true,
-        opacity: 0.8,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false
-    });
-    
-    for (let i = 0; i < 30; i++) {
-        const fire = new THREE.Sprite(fireMaterial.clone());
-        fire.visible = false;
-        fire.userData = {
-            velocity: new THREE.Vector3(),
-            life: 0,
-            maxLife: 0,
-            size: 0
-        };
-        fireParticles.push(fire);
-        fireGroup.add(fire);
-    }
-    
-    group.add(stove, rim, fireGroup);
-    
-    return { 
-        group, 
-        fireParticles, 
-        position: new THREE.Vector3(0, 0, -0.5),
-        update: (delta) => {
-            // Update fire animation
-            fireParticles.forEach(fire => {
-                if (!fire.visible) return;
-                
-                fire.userData.life += delta;
-                const lifeRatio = fire.userData.life / fire.userData.maxLife;
-                
-                if (lifeRatio >= 1) {
-                    fire.visible = false;
-                    return;
-                }
-                
-                // Rise and flicker
-                fire.position.y += fire.userData.velocity.y * delta;
-                fire.position.x += (Math.random() - 0.5) * 0.2 * delta;
-                fire.position.z += (Math.random() - 0.5) * 0.2 * delta;
-                
-                // Fade out
-                fire.material.opacity = (1 - lifeRatio) * 0.8;
-                
-                // Shrink
-                const scale = fire.userData.size * (1 + lifeRatio * 0.5);
-                fire.scale.set(scale, scale, scale);
-            });
-            
-            // Spawn new fire particles
-            if (Math.random() < 0.3) {
-                const fire = fireParticles.find(f => !f.visible);
-                if (fire) {
-                    fire.visible = true;
-                    fire.position.set(
-                        (Math.random() - 0.5) * 0.2,
-                        0.15,
-                        (Math.random() - 0.5) * 0.2
-                    );
-                    fire.userData.velocity.set(0, 0.3 + Math.random() * 0.2, 0);
-                    fire.userData.life = 0;
-                    fire.userData.maxLife = 1 + Math.random() * 0.5;
-                    fire.userData.size = 0.05 + Math.random() * 0.03;
-                    fire.material.opacity = 0.8;
-                }
-            }
-        }
-    };
-}
-
-// Create coffee roasting pan with roasting beans animation
-function createRoastingPan() {
-    const group = new THREE.Group();
-    
-    // Traditional roasting pan
-    const panGeometry = new THREE.CylinderGeometry(0.2, 0.22, 0.05, 32);
-    const panMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0x2c1810,
-        roughness: 0.7,
-        metalness: 0.3,
-        clearcoat: 0.2
-    });
-    const pan = new THREE.Mesh(panGeometry, panMaterial);
-    pan.position.y = 0.25;
-    pan.castShadow = true;
-    pan.receiveShadow = true;
-    
-    // Pan handle
-    const handleCurve = new THREE.CubicBezierCurve3(
-        new THREE.Vector3(0.22, 0.25, 0),
-        new THREE.Vector3(0.35, 0.3, 0.05),
-        new THREE.Vector3(0.4, 0.35, -0.05),
-        new THREE.Vector3(0.45, 0.4, 0)
-    );
-    const handleGeometry = new THREE.TubeGeometry(handleCurve, 20, 0.02, 8, false);
-    const handle = new THREE.Mesh(handleGeometry, panMaterial);
-    handle.castShadow = true;
-    
-    // Coffee beans for roasting
-    const roastingBeans = [];
-    const beanMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0x4a2c17,
-        roughness: 0.8,
-        metalness: 0.1
-    });
-    
-    for (let i = 0; i < 15; i++) {
-        const beanGeometry = new THREE.SphereGeometry(0.008, 8, 6);
-        beanGeometry.scale(1.2, 0.8, 1);
-        const bean = new THREE.Mesh(beanGeometry, beanMaterial);
-        
-        const angle = Math.random() * Math.PI * 2;
-        const radius = Math.random() * 0.15;
-        bean.position.set(
-            Math.cos(angle) * radius,
-            0.28,
-            Math.sin(angle) * radius
-        );
-        
-        bean.rotation.set(
-            Math.random() * Math.PI,
-            Math.random() * Math.PI,
-            Math.random() * Math.PI
-        );
-        
-        bean.userData = {
-            originalPosition: bean.position.clone(),
-            roastingTime: 0,
-            rotationSpeed: new THREE.Vector3(
-                (Math.random() - 0.5) * 2,
-                (Math.random() - 0.5) * 2,
-                (Math.random() - 0.5) * 2
-            )
-        };
-        
-        roastingBeans.push(bean);
-        group.add(bean);
-    }
-    
-    group.add(pan, handle);
-    
-    return {
-        group,
-        roastingBeans,
-        position: new THREE.Vector3(-0.6, 0, 0.3),
-        update: (delta) => {
-            // Animate roasting beans
-            roastingBeans.forEach(bean => {
-                bean.userData.roastingTime += delta;
-                
-                // Tossing motion
-                const tossHeight = Math.sin(bean.userData.roastingTime * 3) * 0.02;
-                bean.position.y = bean.userData.originalPosition.y + tossHeight;
-                
-                // Rotating motion
-                bean.rotation.x += bean.userData.rotationSpeed.x * delta;
-                bean.rotation.y += bean.userData.rotationSpeed.y * delta;
-                bean.rotation.z += bean.userData.rotationSpeed.z * delta;
-                
-                // Color change during roasting
-                const roastLevel = Math.min(bean.userData.roastingTime / 5, 1);
-                const color = new THREE.Color();
-                color.setHSL(0.08, 0.5, 0.3 - roastLevel * 0.15);
-                bean.material.color = color;
-            });
-        }
-    };
-}
-
-// Create traditional grinder (mukecha) with grinding animation
-function createGrinder() {
-    const group = new THREE.Group();
-    
-    // Mortar (mukecha)
-    const mortarGeometry = new THREE.CylinderGeometry(0.12, 0.15, 0.2, 32);
-    const mortarMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0x5d4037,
-        roughness: 0.8,
-        metalness: 0.1
-    });
-    const mortar = new THREE.Mesh(mortarGeometry, mortarMaterial);
-    mortar.position.y = 0.1;
-    mortar.castShadow = true;
-    mortar.receiveShadow = true;
-    
-    // Pestle (zeneb)
-    const pestleGeometry = new THREE.CylinderGeometry(0.02, 0.03, 0.25, 16);
-    const pestleMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0x6d4c41,
-        roughness: 0.7,
-        metalness: 0.1
-    });
-    const pestle = new THREE.Mesh(pestleGeometry, pestleMaterial);
-    pestle.position.set(0, 0.22, 0);
-    pestle.castShadow = true;
-    
-    // Ground coffee particles
-    const groundCoffee = [];
-    const coffeeMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0x2a1810,
-        roughness: 0.9,
-        metalness: 0.05
-    });
-    
-    for (let i = 0; i < 20; i++) {
-        const particleGeometry = new THREE.SphereGeometry(0.002, 6, 4);
-        const particle = new THREE.Mesh(particleGeometry, coffeeMaterial);
-        particle.visible = false;
-        particle.userData = {
-            velocity: new THREE.Vector3(),
-            life: 0,
-            maxLife: 0
-        };
-        groundCoffee.push(particle);
-        group.add(particle);
-    }
-    
-    group.add(mortar, pestle);
-    
-    return {
-        group,
-        pestle,
-        groundCoffee,
-        position: new THREE.Vector3(0.6, 0, 0.3),
-        update: (delta, time) => {
-            // Grinding animation
-            const grindAngle = Math.sin(time * 2) * 0.3;
-            pestle.rotation.x = grindAngle;
-            pestle.position.y = 0.22 + Math.abs(Math.sin(time * 2)) * 0.05;
-            
-            // Spawn ground coffee particles
-            if (Math.random() < 0.2) {
-                const particle = groundCoffee.find(p => !p.visible);
-                if (particle) {
-                    particle.visible = true;
-                    particle.position.copy(pestle.position);
-                    particle.position.y -= 0.12;
-                    
-                    particle.userData.velocity.set(
-                        (Math.random() - 0.5) * 0.1,
-                        0.05,
-                        (Math.random() - 0.5) * 0.1
-                    );
-                    particle.userData.life = 0;
-                    particle.userData.maxLife = 2;
-                }
-            }
-            
-            // Update ground coffee particles
-            groundCoffee.forEach(particle => {
-                if (!particle.visible) return;
-                
-                particle.userData.life += delta;
-                const lifeRatio = particle.userData.life / particle.userData.maxLife;
-                
-                if (lifeRatio >= 1) {
-                    particle.visible = false;
-                    return;
-                }
-                
-                particle.position.add(particle.userData.velocity.clone().multiplyScalar(delta));
-                particle.position.y -= 0.02 * delta; // Gravity
-                
-                // Fade out
-                particle.material.opacity = 1 - lifeRatio;
-            });
-        }
-    };
-}
-
 // Create ornate brass censer with smoking incense (enhanced)
 function createCenser() {
     const group = new THREE.Group();
@@ -918,307 +578,249 @@ function createCenser() {
     return { group, position: new THREE.Vector3(-0.9, 0, 0.3) };
 }
 
-// Create additional sini cups for serving
-function createAdditionalCups() {
+// Create authentic Ethiopian coffee cup (Sini) to traditional specifications
+function createCup() {
     const group = new THREE.Group();
-    
-    // Create 3 additional cups for serving
-    const positions = [
-        new THREE.Vector3(0.6, 0, 0.4),
-        new THREE.Vector3(0.7, 0, 0.2),
-        new THREE.Vector3(0.65, 0, 0.6)
+
+    // Traditional Sini shape - small, handleless, designed for few sips
+    const cupPoints = [
+        new THREE.Vector2(0.03, 0),      // Bottom point - very small base
+        new THREE.Vector2(0.05, 0.02),   // Lower base
+        new THREE.Vector2(0.06, 0.06),   // Lower body
+        new THREE.Vector2(0.07, 0.10),   // Mid body
+        new THREE.Vector2(0.075, 0.14),  // Upper body
+        new THREE.Vector2(0.08, 0.18),   // Neck start
+        new THREE.Vector2(0.085, 0.22)   // Flared rim - small opening
     ];
+    const cupGeometry = new THREE.LatheGeometry(cupPoints, 64);
     
-    positions.forEach((pos, index) => {
-        // Small cup shape
-        const cupPoints = [
-            new THREE.Vector2(0.03, 0),
-            new THREE.Vector2(0.05, 0.02),
-            new THREE.Vector2(0.06, 0.06),
-            new THREE.Vector2(0.07, 0.10),
-            new THREE.Vector2(0.075, 0.14),
-            new THREE.Vector2(0.08, 0.18),
-            new THREE.Vector2(0.085, 0.22)
-        ];
-        const cupGeometry = new THREE.LatheGeometry(cupPoints, 32);
-        
-        // White porcelain material
-        const cupMaterial = new THREE.MeshPhysicalMaterial({
-            color: 0xffffff,
-            roughness: 0.08,
-            metalness: 0.01,
-            clearcoat: 0.7,
-            clearcoatRoughness: 0.05
-        });
-        
-        const cup = new THREE.Mesh(cupGeometry, cupMaterial);
-        cup.position.copy(pos);
-        cup.position.y = 0.11;
-        cup.castShadow = true;
-        cup.receiveShadow = true;
-        
-        // Add rotation animation
-        cup.userData = {
-            rotationSpeed: 0.5 + index * 0.1,
-            originalY: cup.position.y
-        };
-        
-        // Small saucer
-        const saucerGeometry = new THREE.CylinderGeometry(0.12, 0.13, 0.01, 32);
-        const saucer = new THREE.Mesh(saucerGeometry, cupMaterial);
-        saucer.position.copy(pos);
-        saucer.position.y = 0.105;
-        saucer.castShadow = true;
-        saucer.receiveShadow = true;
-        
-        group.add(cup, saucer);
+    // Authentic white porcelain material - smooth and glossy
+    const cupMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0xffffff,
+        roughness: 0.08, // Very smooth porcelain
+        metalness: 0.01,  // Almost no metallic properties
+        clearcoat: 0.7,   // High gloss like porcelain
+        clearcoatRoughness: 0.05
     });
     
-    return {
-        group,
-        update: (delta, time) => {
-            // Subtle floating animation for cups
-            group.children.forEach((child, index) => {
-                if (child instanceof THREE.Mesh && child.geometry instanceof THREE.LatheGeometry) {
-                    const floatHeight = Math.sin(time * child.userData.rotationSpeed) * 0.01;
-                    child.position.y = child.userData.originalY + floatHeight;
-                    child.rotation.y += delta * 0.2;
-                }
-            });
-        }
-    };
-}
+    const cup = new THREE.Mesh(cupGeometry, cupMaterial);
+    cup.position.y = 0.11; // Lower position for smaller cup
+    cup.castShadow = true;
+    cup.receiveShadow = true;
+    
+    // Create traditional Ethiopian Sini patterns
+    const patternCanvas = document.createElement('canvas');
+    patternCanvas.width = 1024;
+    patternCanvas.height = 1024;
+    const ctx = patternCanvas.getContext('2d');
+    
+    // Pure white porcelain background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 1024, 1024);
+    
+    // Add subtle porcelain texture
+    for (let i = 0; i < 600; i++) {
+        const x = Math.random() * 1024;
+        const y = Math.random() * 1024;
+        const size = Math.random() * 1.5;
+        const opacity = Math.random() * 0.03;
+        ctx.fillStyle = `rgba(250, 250, 250, ${opacity})`;
+        ctx.fillRect(x, y, size, size);
+    }
+    
+    // Traditional Ethiopian floral pattern for Sini
+    function drawTraditionalSiniFlower(ctx, x, y, scale, primaryColor, secondaryColor, goldColor) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(scale, scale);
 
-// Create traditional snacks and bowls
-function createTraditionalSnacks() {
-    const group = new THREE.Group();
-    
-    // Popcorn bowl
-    const bowlGeometry = new THREE.CylinderGeometry(0.1, 0.12, 0.04, 32);
-    const bowlMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0x8d6e63,
-        roughness: 0.8,
-        metalness: 0.1
-    });
-    const popcornBowl = new THREE.Mesh(bowlGeometry, bowlMaterial);
-    popcornBowl.position.set(-0.4, 0.12, 0.6);
-    popcornBowl.castShadow = true;
-    popcornBowl.receiveShadow = true;
-    
-    // Popcorn pieces
-    const popcornMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0xfffbf0,
-        roughness: 0.9,
-        metalness: 0.05
-    });
-    
-    for (let i = 0; i < 8; i++) {
-        const popcornGeometry = new THREE.SphereGeometry(0.015, 8, 6);
-        const popcorn = new THREE.Mesh(popcornGeometry, popcornMaterial);
-        
-        const angle = (i / 8) * Math.PI * 2;
-        const radius = Math.random() * 0.08;
-        popcorn.position.set(
-            -0.4 + Math.cos(angle) * radius,
-            0.15,
-            0.6 + Math.sin(angle) * radius
-        );
-        
-        popcorn.rotation.set(
-            Math.random() * Math.PI,
-            Math.random() * Math.PI,
-            Math.random() * Math.PI
-        );
-        
-        // Floating animation
-        popcorn.userData = {
-            originalY: popcorn.position.y,
-            floatSpeed: 1 + Math.random()
-        };
-        
-        popcorn.castShadow = true;
-        group.add(popcorn);
-    }
-    
-    // Barley (kolo) bowl
-    const barleyBowl = new THREE.Mesh(bowlGeometry, bowlMaterial);
-    barleyBowl.position.set(0.4, 0.12, 0.6);
-    barleyBowl.castShadow = true;
-    barleyBowl.receiveShadow = true;
-    
-    // Barley grains
-    const barleyMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0xd4a574,
-        roughness: 0.8,
-        metalness: 0.1
-    });
-    
-    for (let i = 0; i < 12; i++) {
-        const barleyGeometry = new THREE.CylinderGeometry(0.003, 0.004, 0.015, 8);
-        const barley = new THREE.Mesh(barleyGeometry, barleyMaterial);
-        
-        const angle = (i / 12) * Math.PI * 2;
-        const radius = Math.random() * 0.08;
-        barley.position.set(
-            0.4 + Math.cos(angle) * radius,
-            0.15,
-            0.6 + Math.sin(angle) * radius
-        );
-        
-        barley.rotation.set(
-            Math.random() * Math.PI,
-            Math.random() * Math.PI,
-            Math.random() * Math.PI
-        );
-        
-        barley.castShadow = true;
-        group.add(barley);
-    }
-    
-    group.add(popcornBowl, barleyBowl);
-    
-    return {
-        group,
-        update: (delta, time) => {
-            // Animate popcorn floating
-            group.children.forEach(child => {
-                if (child.userData.originalY !== undefined) {
-                    const floatHeight = Math.sin(time * child.userData.floatSpeed) * 0.005;
-                    child.position.y = child.userData.originalY + floatHeight;
-                }
-            });
-        }
-    };
-}
+        // Delicate stem with subtle gradient
+        const stemGradient = ctx.createLinearGradient(-1.5, 0, 1.5, 20);
+        stemGradient.addColorStop(0, secondaryColor);
+        stemGradient.addColorStop(0.5, primaryColor);
+        stemGradient.addColorStop(1, secondaryColor);
+        ctx.fillStyle = stemGradient;
+        ctx.fillRect(-1.5, 0, 3, 20);
 
-// Create Ethiopian textiles backdrop
-function createEthiopianTextiles() {
-    const group = new THREE.Group();
-    
-    // Traditional gabi (white cotton cloth)
-    const gabiGeometry = new THREE.PlaneGeometry(4, 3, 32, 24);
-    
-    // Create woven texture
-    const gabiCanvas = document.createElement('canvas');
-    gabiCanvas.width = 512;
-    gabiCanvas.height = 512;
-    const ctx = gabiCanvas.getContext('2d');
-    
-    // White base
-    ctx.fillStyle = '#f8f8f8';
-    ctx.fillRect(0, 0, 512, 512);
-    
-    // Woven pattern
-    for (let y = 0; y < 512; y += 8) {
-        for (let x = 0; x < 512; x += 16) {
-            ctx.fillStyle = y % 16 === 0 ? '#f0f0f0' : '#ffffff';
-            ctx.fillRect(x, y, 15, 7);
+        // Delicate leaves with proper anatomy
+        ctx.fillStyle = secondaryColor;
+        
+        // Left leaf with fine vein
+        ctx.beginPath();
+        ctx.moveTo(-5, 10);
+        ctx.quadraticCurveTo(-12, 5, -5, 0);
+        ctx.quadraticCurveTo(-9, 5, -5, 10);
+        ctx.fill();
+        
+        // Fine leaf vein
+        ctx.strokeStyle = goldColor;
+        ctx.lineWidth = 0.3;
+        ctx.beginPath();
+        ctx.moveTo(-5, 10);
+        ctx.lineTo(-8, 5);
+        ctx.stroke();
+
+        // Right leaf with fine vein
+        ctx.fillStyle = secondaryColor;
+        ctx.beginPath();
+        ctx.moveTo(5, 10);
+        ctx.quadraticCurveTo(12, 5, 5, 0);
+        ctx.quadraticCurveTo(9, 5, 5, 10);
+        ctx.fill();
+        
+        // Fine leaf vein
+        ctx.beginPath();
+        ctx.moveTo(5, 10);
+        ctx.lineTo(8, 5);
+        ctx.stroke();
+
+        // Traditional 6-petal flower with gradient
+        for (let i = 0; i < 6; i++) {
+            const angle = (i / 6) * Math.PI * 2;
+            const petalX = Math.cos(angle) * 8;
+            const petalY = Math.sin(angle) * 8 - 6;
+            
+            const petalGradient = ctx.createRadialGradient(petalX, petalY, 0, petalX, petalY, 5);
+            petalGradient.addColorStop(0, primaryColor);
+            petalGradient.addColorStop(0.8, secondaryColor);
+            petalGradient.addColorStop(1, primaryColor);
+            ctx.fillStyle = petalGradient;
+            
+            ctx.beginPath();
+            ctx.arc(petalX, petalY, 5, 0, Math.PI * 2);
+            ctx.fill();
         }
+
+        // Center with gradient
+        const centerGradient = ctx.createRadialGradient(0, -6, 0, 0, -6, 3);
+        centerGradient.addColorStop(0, goldColor);
+        centerGradient.addColorStop(0.5, secondaryColor);
+        centerGradient.addColorStop(1, goldColor);
+        ctx.fillStyle = centerGradient;
+        ctx.beginPath();
+        ctx.arc(0, -6, 3, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Delicate center highlight
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.beginPath();
+        ctx.arc(-1, -7, 1, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
     }
+
+    // Traditional Ethiopian colors for Sini
+    const primaryColor = '#c41e3a'; // Traditional Ethiopian red
+    const secondaryColor = '#1abc9c'; // Traditional Ethiopian teal
+    const goldColor = '#f39c12'; // Traditional Ethiopian gold
     
-    // Vertical threads
-    for (let x = 0; x < 512; x += 8) {
-        for (let y = 0; y < 512; y += 16) {
-            ctx.fillStyle = x % 16 === 0 ? '#f0f0f0' : '#ffffff';
-            ctx.fillRect(x, y, 7, 15);
-        }
-    }
+    // Traditional pattern arrangement for Sini
+    const scale = 0.9; // Smaller scale for smaller cup
+    const spacing = 140; // Tighter spacing
     
-    const gabiTexture = new THREE.CanvasTexture(gabiCanvas);
+    // Row 1 - traditional placement
+    drawTraditionalSiniFlower(ctx, 120, 150, scale, primaryColor, secondaryColor, goldColor);
+    drawTraditionalSiniFlower(ctx, 120 + spacing, 150, scale, secondaryColor, primaryColor, goldColor);
+    drawTraditionalSiniFlower(ctx, 120 + spacing * 2, 150, scale, primaryColor, secondaryColor, goldColor);
+    drawTraditionalSiniFlower(ctx, 120 + spacing * 3, 150, scale, secondaryColor, primaryColor, goldColor);
+    drawTraditionalSiniFlower(ctx, 120 + spacing * 4, 150, scale, primaryColor, secondaryColor, goldColor);
     
-    const gabiMaterial = new THREE.MeshPhysicalMaterial({
-        map: gabiTexture,
-        color: 0xf8f8f8,
-        roughness: 0.9,
-        metalness: 0.05,
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0.8
+    // Row 2 - offset pattern
+    drawTraditionalSiniFlower(ctx, 190, 150 + spacing, scale, secondaryColor, primaryColor, goldColor);
+    drawTraditionalSiniFlower(ctx, 190 + spacing, 150 + spacing, scale, primaryColor, secondaryColor, goldColor);
+    drawTraditionalSiniFlower(ctx, 190 + spacing * 2, 150 + spacing, scale, secondaryColor, primaryColor, goldColor);
+    drawTraditionalSiniFlower(ctx, 190 + spacing * 3, 150 + spacing, scale, primaryColor, secondaryColor, goldColor);
+    
+    // Row 3 - return to original alignment
+    drawTraditionalSiniFlower(ctx, 120, 150 + spacing * 2, scale, primaryColor, secondaryColor, goldColor);
+    drawTraditionalSiniFlower(ctx, 120 + spacing, 150 + spacing * 2, scale, secondaryColor, primaryColor, goldColor);
+    drawTraditionalSiniFlower(ctx, 120 + spacing * 2, 150 + spacing * 2, scale, primaryColor, secondaryColor, goldColor);
+    drawTraditionalSiniFlower(ctx, 120 + spacing * 3, 150 + spacing * 2, scale, secondaryColor, primaryColor, goldColor);
+    drawTraditionalSiniFlower(ctx, 120 + spacing * 4, 150 + spacing * 2, scale, primaryColor, secondaryColor, goldColor);
+
+    const patternTexture = new THREE.CanvasTexture(patternCanvas);
+    
+    // Apply traditional pattern to Sini
+    const patternedCupMaterial = new THREE.MeshPhysicalMaterial({
+        map: patternTexture,
+        roughness: 0.08, // Smooth porcelain
+        metalness: 0.01,
+        clearcoat: 0.7,  // High gloss
+        clearcoatRoughness: 0.05
     });
     
-    const gabi = new THREE.Mesh(gabiGeometry, gabiMaterial);
-    gabi.position.set(0, 2, -2);
-    gabi.rotation.x = -Math.PI / 4;
-    
-    // Netela (lighter scarf) with traditional borders
-    const netelaGeometry = new THREE.PlaneGeometry(3, 2, 24, 16);
-    
-    // Create netela texture with colorful borders
-    const netelaCanvas = document.createElement('canvas');
-    netelaCanvas.width = 512;
-    netelaCanvas.height = 512;
-    const netelaCtx = netelaCanvas.getContext('2d');
-    
-    // Light base
-    netelaCtx.fillStyle = '#fafafa';
-    netelaCtx.fillRect(0, 0, 512, 512);
-    
-    // Colorful borders (traditional Ethiopian colors)
-    const borderColors = ['#e74c3c', '#f39c12', '#1abc9c', '#ffffff'];
-    
-    // Top border
-    for (let i = 0; i < 4; i++) {
-        netelaCtx.fillStyle = borderColors[i];
-        netelaCtx.fillRect(0, i * 16, 512, 16);
-    }
-    
-    // Bottom border
-    for (let i = 0; i < 4; i++) {
-        netelaCtx.fillStyle = borderColors[3 - i];
-        netelaCtx.fillRect(0, 512 - (i + 1) * 16, 512, 16);
-    }
-    
-    // Side borders
-    for (let i = 0; i < 4; i++) {
-        netelaCtx.fillStyle = borderColors[i];
-        netelaCtx.fillRect(i * 16, 0, 16, 512);
-        netelaCtx.fillRect(512 - (i + 1) * 16, 0, 16, 512);
-    }
-    
-    // Traditional cross pattern in center
-    netelaCtx.fillStyle = '#e74c3c';
-    netelaCtx.fillRect(240, 240, 32, 8);
-    netelaCtx.fillRect(252, 228, 8, 32);
-    
-    const netelaTexture = new THREE.CanvasTexture(netelaCanvas);
-    
-    const netelaMaterial = new THREE.MeshPhysicalMaterial({
-        map: netelaTexture,
-        roughness: 0.8,
+    cup.material = patternedCupMaterial;
+
+    // Coffee for the ceremony - small amount for few sips
+    const coffeeGeometry = new THREE.CylinderGeometry(0.07, 0.07, 0.004, 64); // Thinner layer
+    const coffeeMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0x1a0e08,
+        roughness: 0.05,
         metalness: 0.05,
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0.9
+        clearcoat: 0.9,
+        clearcoatRoughness: 0.05,
+        envMapIntensity: 0.8,
+        ior: 1.33
     });
+    const coffee = new THREE.Mesh(coffeeGeometry, coffeeMaterial);
+    coffee.position.y = 0.22;
+    coffee.castShadow = true;
+    coffee.receiveShadow = true;
     
-    const netela = new THREE.Mesh(netelaGeometry, netelaMaterial);
-    netela.position.set(-1.5, 1.5, -1);
-    netela.rotation.y = Math.PI / 6;
-    netela.rotation.x = -Math.PI / 8;
+    // Traditional coffee foam (crema)
+    const foamGeometry = new THREE.CylinderGeometry(0.07, 0.07, 0.001, 64);
+    const foamMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0xe6d690,
+        roughness: 0.85,
+        metalness: 0.02,
+        clearcoat: 0.2,
+        transparent: true,
+        opacity: 0.85,
+        envMapIntensity: 0.3
+    });
+    const foam = new THREE.Mesh(foamGeometry, foamMaterial);
+    foam.position.y = 0.222;
+    foam.castShadow = true;
+    foam.receiveShadow = true;
+
+    // Traditional gold rim - common on Sini
+    const rimGeometry = new THREE.TorusGeometry(0.085, 0.005, 32, 128);
+    const rimMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0xf39c12,
+        roughness: 0.1,
+        metalness: 0.9,
+        clearcoat: 0.8,
+        clearcoatRoughness: 0.05,
+        envMapIntensity: 2.0,
+        emissive: 0xf39c12,
+        emissiveIntensity: 0.08,
+        reflectivity: 0.95
+    });
+    const rim = new THREE.Mesh(rimGeometry, rimMaterial);
+    rim.position.y = 0.22;
+    rim.rotation.x = Math.PI / 2;
+    rim.castShadow = true;
+    rim.receiveShadow = true;
     
-    // Add subtle wave animation
-    gabi.userData = { waveSpeed: 0.5 };
-    netela.userData = { waveSpeed: 0.7 };
+    // Traditional saucer for Sini
+    const saucerGeometry = new THREE.CylinderGeometry(0.12, 0.13, 0.01, 64); // Smaller saucer
+    const saucer = new THREE.Mesh(saucerGeometry, cupMaterial);
+    saucer.position.y = 0.105;
+    saucer.castShadow = true;
+    saucer.receiveShadow = true;
     
-    group.add(gabi, netela);
+    // Saucer rim
+    const saucerRimGeometry = new THREE.TorusGeometry(0.13, 0.005, 32, 128);
+    const saucerRim = new THREE.Mesh(saucerRimGeometry, rimMaterial);
+    saucerRim.position.y = 0.11;
+    saucerRim.rotation.x = Math.PI / 2;
+    saucerRim.castShadow = true;
+    saucerRim.receiveShadow = true;
+
+    group.add(cup, coffee, foam, rim, saucer, saucerRim);
     
-    return {
-        group,
-        update: (delta, time) => {
-            // Subtle wave animation for textiles
-            [gabi, netela].forEach((textile, index) => {
-                const vertices = textile.geometry.attributes.position.array;
-                for (let i = 0; i < vertices.length; i += 3) {
-                    const x = vertices[i];
-                    const y = vertices[i + 1];
-                    vertices[i + 2] = Math.sin(x * 2 + time * textile.userData.waveSpeed) * 
-                                     Math.cos(y * 2 + time * textile.userData.waveSpeed) * 0.05;
-                }
-                textile.geometry.attributes.position.needsUpdate = true;
-                textile.geometry.computeVertexNormals();
-            });
-        }
-    };
+    return { group, position: new THREE.Vector3(0.85, 0, 0.25) };
 }
 
 // Create enhanced coffee beans with better distribution
