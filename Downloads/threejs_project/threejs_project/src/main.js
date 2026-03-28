@@ -701,22 +701,36 @@ function createJebena() {
     textureCanvas.height = 1024;
     const ctx = textureCanvas.getContext('2d');
 
+<<<<<<< HEAD
     // Traditional clay base with blackened finish (dark matte)
     ctx.fillStyle = '#110c08';
     ctx.fillRect(0, 0, 1024, 1024);
     
     // Add authentic clay texture variations from firing and use
+=======
+    // Black base with white cultural style patterns
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, 1024, 1024);
+
+    // Add subtle black texture variations
+>>>>>>> v1.1
     for (let i = 0; i < 4000; i++) {
         const x = Math.random() * 1024;
         const y = Math.random() * 1024;
         const size = Math.random() * 3 + 1;
         const opacity = Math.random() * 0.15;
+<<<<<<< HEAD
         const darkness = Math.random() * 10;
         ctx.fillStyle = `rgba(${20 - darkness}, ${15 - darkness}, ${10 - darkness}, ${opacity})`;
+=======
+        const shade = 10 + Math.random() * 15;
+        ctx.fillStyle = `rgba(${shade}, ${shade}, ${shade - 5}, ${opacity})`;
+>>>>>>> v1.1
         ctx.beginPath();
         ctx.arc(x, y, size, 0, Math.PI * 2);
         ctx.fill();
     }
+<<<<<<< HEAD
     
     // Add soot / blackened areas heavily at the bottom
     const gradient = ctx.createLinearGradient(0, 1024, 0, 500);
@@ -732,6 +746,41 @@ function createJebena() {
         map: texture,
         color: 0x1a1611,
         roughness: 0.95,
+=======
+
+    // Add traditional Ethiopian cross patterns in subtle gray
+    ctx.strokeStyle = '#d4d4d0';
+    ctx.lineWidth = 2;
+    const crossSpacing = 180;
+    for (let y = crossSpacing; y < 1024; y += crossSpacing) {
+        for (let x = crossSpacing; x < 1024; x += crossSpacing) {
+            const size = 25;
+            // Diamond shape
+            ctx.beginPath();
+            ctx.moveTo(x, y - size);
+            ctx.lineTo(x + size, y);
+            ctx.lineTo(x, y + size);
+            ctx.lineTo(x - size, y);
+            ctx.closePath();
+            ctx.stroke();
+            // Inner cross
+            ctx.beginPath();
+            ctx.moveTo(x - size/2, y);
+            ctx.lineTo(x + size/2, y);
+            ctx.moveTo(x, y - size/2);
+            ctx.lineTo(x, y + size/2);
+            ctx.stroke();
+        }
+    }
+
+    const texture = new THREE.CanvasTexture(textureCanvas);
+
+    // White cultural material - clean and elegant
+    const jebenaMaterial = new THREE.MeshStandardMaterial({
+        map: texture,
+        color: 0xffffff,
+        roughness: 0.3,
+>>>>>>> v1.1
         metalness: 0.05,
     });
 
@@ -1651,17 +1700,30 @@ function createMesob() {
 
 function createKetemaFloor() {
     const floorGeometry = new THREE.PlaneGeometry(25, 25);
+<<<<<<< HEAD
     
     // Create a grassy texture procedurally
+=======
+
+    // Create a dark earthy floor texture
+>>>>>>> v1.1
     const canvas = document.createElement('canvas');
     canvas.width = 1024;
     canvas.height = 1024;
     const ctx = canvas.getContext('2d');
+<<<<<<< HEAD
     
     // Base dark dirt/shadow color
     ctx.fillStyle = '#1a1f14';
     ctx.fillRect(0, 0, 1024, 1024);
     
+=======
+
+    // Base dark dirt/shadow color
+    ctx.fillStyle = '#1a1f14';
+    ctx.fillRect(0, 0, 1024, 1024);
+
+>>>>>>> v1.1
     // Create grass in patches so it does not cover every space
     const grassPatches = [
         { x: 260, y: 260, r: 250 },
@@ -1684,15 +1746,26 @@ function createKetemaFloor() {
 
         const length = 10 + Math.random() * 45;
         const angle = -Math.PI/2 + (Math.random() - 0.5) * 0.5; // Mostly vertical
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> v1.1
         // Use a mix of lush greens, dried straw, and dark soil tones
         const hue = 80 + Math.random() * 40;
         const sat = 30 + Math.random() * 40;
         const light = 15 + Math.random() * 25;
+<<<<<<< HEAD
         
         ctx.strokeStyle = `hsl(${hue}, ${sat}%, ${light}%)`;
         ctx.lineWidth = 0.5 + Math.random() * 1.5;
         
+=======
+
+        ctx.strokeStyle = `hsl(${hue}, ${sat}%, ${light}%)`;
+        ctx.lineWidth = 0.5 + Math.random() * 1.5;
+
+>>>>>>> v1.1
         ctx.beginPath();
         ctx.moveTo(x, y);
         const cp1x = x + (Math.random() - 0.5) * 10;
@@ -1702,7 +1775,11 @@ function createKetemaFloor() {
         ctx.quadraticCurveTo(cp1x, cp1y, endX, endY);
         ctx.stroke();
     }
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> v1.1
     // Add some "clover" and small flower highlights
     for (let i = 0; i < 500; i++) {
         const x = Math.random() * 1024;
@@ -1712,22 +1789,38 @@ function createKetemaFloor() {
         ctx.arc(x, y, 2, 0, Math.PI * 2);
         ctx.fill();
     }
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> v1.1
     const floorTexture = new THREE.CanvasTexture(canvas);
     floorTexture.wrapS = THREE.RepeatWrapping;
     floorTexture.wrapT = THREE.RepeatWrapping;
     floorTexture.repeat.set(4, 4);
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> v1.1
     const floorMaterial = new THREE.MeshStandardMaterial({
         map: floorTexture,
         roughness: 0.9,
     });
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> v1.1
     const floorMesh = new THREE.Mesh(floorGeometry, floorMaterial);
     floorMesh.rotation.x = -Math.PI / 2;
     floorMesh.position.y = -0.3; // Right below the mesob
     floorMesh.receiveShadow = true;
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> v1.1
     return floorMesh;
 }
 
@@ -1849,6 +1942,7 @@ function createWindowBackdrop() {
     return group;
 }
 
+<<<<<<< HEAD
 function createChocho() {
     const group = new THREE.Group();
     // A traditional milk vessel wrapped in leather/twine with textured clay
@@ -1892,6 +1986,8 @@ function createChocho() {
     group.scale.set(0.6, 0.6, 0.6); // Scale down
     return group;
 }
+=======
+>>>>>>> v1.1
 
 function createSefed() {
     const group = new THREE.Group();
@@ -2190,7 +2286,11 @@ function createMukecha() {
     pestle.castShadow = true;
     
     group.add(mortar, hollow, pestle);
+<<<<<<< HEAD
     group.scale.set(1.5, 1.5, 1.5); // Increase scale for realism
+=======
+    group.scale.set(0.6, 0.6, 0.6); // Smaller size
+>>>>>>> v1.1
     return { group, position: new THREE.Vector3(-1.1, 0, 0.6) };
 }
 
@@ -2219,6 +2319,10 @@ const { group: jebena, position: jebenaPos } = createJebena();
 // Position Jebena slightly off-center on the Rekebot
 jebena.position.set(0.2, 0.1, 0.2); // sit on top of the Rekebot (y=0.1)
 jebena.rotation.y = -Math.PI / 4; // Angle it nicely
+<<<<<<< HEAD
+=======
+jebena.scale.set(0.4, 0.4, 0.4); // Even smaller
+>>>>>>> v1.1
 jebena.castShadow = true;
 jebena.receiveShadow = true;
 ceremonyGroup.add(jebena);
@@ -2308,10 +2412,13 @@ const { group: hearth, light: hearthLight } = createGlowingHearth();
 hearth.position.set(-1.8, 0, 1.2); // Back left corner
 scene.add(hearth);
 
+<<<<<<< HEAD
 const chocho = createChocho();
 chocho.position.set(2.2, 0, 0.5); // Move further right and back
 scene.add(chocho);
 
+=======
+>>>>>>> v1.1
 // Ceremony Rotation
 ceremonyGroup.rotation.y = Math.PI / 4; // Rotate only the ceremony items
 
